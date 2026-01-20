@@ -1,10 +1,3 @@
-//
-//  hds.swift
-//  Physics
-//
-//  Created by Luca Langella 1 on 20/01/26.
-//
-
 import SwiftUI
 
 struct PhysicsControlView: View {
@@ -13,22 +6,54 @@ struct PhysicsControlView: View {
     var body: some View {
         NavigationStack {
             List {
-                // --- Section 1: Live Data (Simple Text) ---
+                // --- Section 1: Telemetry ---
                 Section("Telemetry") {
                     HStack {
                         Label("Current Speed", systemImage: "speedometer")
                         Spacer()
-                        // Monospaced font keeps the numbers from "jittering"
                         Text("\(appModel.currentSpeed, specifier: "%.2f") m/s")
                             .font(.monospacedDigit(.body)())
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                // --- Section 2: Actions ---
-                Section("Actions") {
+                // --- NEW Section: Gesture Debug ---
+                Section("Gesture Debug") {
+                    // 1. Respawn Button
                     Button("Respawn Box") { appModel.triggerReset() }
-                    Button("Kick Box (Apply Impulse)") { appModel.triggerImpulse() }
+                    
+                    // 2. Status Indicator
+                    HStack {
+                        Text("Interaction Status")
+                        Spacer()
+                        Text(appModel.isDragging ? "GRABBING" : "IDLE")
+                            .font(.caption.bold())
+                            .padding(6)
+                            .background(appModel.isDragging ? Color.green : Color.gray.opacity(0.2))
+                            .foregroundColor(appModel.isDragging ? .black : .primary)
+                            .cornerRadius(8)
+                    }
+                    
+                    // 3. Throw Strength Controller
+                    VStack {
+                        HStack {
+                            Text("Throw Strength Multiplier")
+                            Spacer()
+                            Text(String(format: "x%.1f", appModel.throwStrength))
+                                .foregroundStyle(.blue)
+                        }
+                        // Range from 1x to 20x force
+                        Slider(value: Bindable(appModel).throwStrength, in: 1.0...20.0)
+                    }
+                    
+                    // 4. Last Throw Vector
+                    VStack(alignment: .leading) {
+                        Text("Last Throw Vector (X, Y, Z)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(appModel.lastThrowVector)
+                            .font(.system(.caption, design: .monospaced))
+                    }
                 }
                 
                 // --- Section 3: Behavior ---
@@ -76,9 +101,4 @@ struct PhysicsControlView: View {
         }
         .frame(width: 400, height: 1100)
     }
-}
-
-#Preview(windowStyle: .volumetric) {
-    PhysicsControlView()
-        .environment(AppModel())
 }

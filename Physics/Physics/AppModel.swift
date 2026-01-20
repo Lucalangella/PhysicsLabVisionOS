@@ -9,14 +9,12 @@ import SwiftUI
 import Observation
 import RealityKit
 
-// --- 1. Define the State Enum (This was missing) ---
 enum ImmersiveSpaceState {
     case closed
     case inTransition
     case open
 }
 
-// --- 2. Define the Physics Mode Enum ---
 enum PhysicsModeOption: String, CaseIterable, Identifiable {
     case dynamic = "Dynamic"
     case staticMode = "Static"
@@ -24,7 +22,6 @@ enum PhysicsModeOption: String, CaseIterable, Identifiable {
     
     var id: String { self.rawValue }
     
-    // Helper to convert to RealityKit type
     var rkMode: PhysicsBodyMode {
         switch self {
         case .dynamic: return .dynamic
@@ -34,31 +31,30 @@ enum PhysicsModeOption: String, CaseIterable, Identifiable {
     }
 }
 
-// --- 3. The Main App Model ---
 @Observable
 class AppModel {
     // --- System States ---
     var immersiveSpaceState: ImmersiveSpaceState = .closed
     var resetSignal = false
-    var impulseSignal = false
+    // REMOVED: var impulseSignal = false (No longer needed)
     
     // --- Live Data ---
-        var currentSpeed: Float = 0.0 // <--- ADD THIS
+    var currentSpeed: Float = 0.0
+    
+    // --- Gesture Debugging ---
+    var isDragging: Bool = false
+    var throwStrength: Float = 8.0  // Editable multiplier
+    var lastThrowVector: String = "0.0, 0.0, 0.0" // Debug info
     
     // --- Physics Properties ---
-    // 1. Body
     var selectedMode: PhysicsModeOption = .dynamic
-    var mass: Float = 1.0 // in Kilograms
+    var mass: Float = 1.0
     
-    // 2. Material
-    var staticFriction: Float = 0.5   // Grip when standing still
-    var dynamicFriction: Float = 0.5  // Grip when sliding
-    var restitution: Float = 0.6      // Bounciness (0.0 to 1.0)
+    var staticFriction: Float = 0.5
+    var dynamicFriction: Float = 0.5
+    var restitution: Float = 0.6
     
-    // 3. Motion Damping (Air Resistance)
-    var linearDamping: Float = 0.0    // Resistance to moving forward
-    var angularDamping: Float = 0.0   // Resistance to spinning
+    var linearDamping: Float = 0.0
     
     func triggerReset() { resetSignal.toggle() }
-    func triggerImpulse() { impulseSignal.toggle() }
 }
