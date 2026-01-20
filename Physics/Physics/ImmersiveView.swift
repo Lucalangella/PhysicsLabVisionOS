@@ -8,6 +8,7 @@ struct ImmersiveView: View {
     @State private var objectEntity: ModelEntity? // Renamed from boxEntity for clarity
     @State private var rootEntity: Entity?
     @State private var traceRoot: Entity?
+    @State private var rampEntity: ModelEntity?
     
     // Logic State
     @State private var lastMarkerPosition: SIMD3<Float>? = nil
@@ -38,6 +39,24 @@ struct ImmersiveView: View {
             floor.generateCollisionShapes(recursive: false)
             floor.components.set(PhysicsBodyComponent(mode: .static))
             root.addChild(floor)
+            
+            // 1. SETUP RAMP (Add this after the Floor setup)
+            let ramp = ModelEntity(
+                mesh: .generateBox(width: 1.0, height: 0.02, depth: 4.0), // A long thin board
+                materials: [SimpleMaterial(color: .gray, isMetallic: false)]
+            )
+            // Position it slightly to the side or center, raised slightly so it doesn't clip the floor
+            ramp.position = [1.0, 0.5, -2.0]
+
+            // Physics for Ramp (Static, so it doesn't fall)
+            ramp.generateCollisionShapes(recursive: false)
+            ramp.components.set(PhysicsBodyComponent(mode: .static))
+
+            // Hide it initially if showRamp is false
+            ramp.isEnabled = appModel.showRamp
+
+            root.addChild(ramp)
+            self.rampEntity = ramp
             
             // --- CREATE INITIAL OBJECT ---
             let object = ModelEntity() // Empty initially
@@ -162,6 +181,21 @@ struct ImmersiveView: View {
         // NEW: Shape Change
         .onChange(of: appModel.selectedShape) {
             updateShape()
+        }
+        // NEW: Handle Ramp Changes
+        .onChange(of: appModel.showRamp) {
+            rampEntity?.isEnabled = appModel.showRamp
+        }
+        .onChange(of: appModel.rampAngle) {
+            guard let ramp = rampEntity else { return }
+            
+            // Convert degrees to radians
+            let radians = appModel.rampAngle * (Float.pi / 180.0)
+            
+            // Rotate around the Z axis (to tilt sideways) or X axis (to tilt forward)
+            // Here we tilt around X axis so it slopes towards the camera or away
+            // Let's tilt it so it acts like a slide
+            ramp.transform.rotation = simd_quatf(angle: radians, axis: [1, 0, 0])
         }
     }
     

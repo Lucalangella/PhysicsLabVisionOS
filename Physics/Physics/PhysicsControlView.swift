@@ -27,6 +27,24 @@ struct PhysicsControlView: View {
                         Slider(value: Bindable(appModel).gravity, in: -20.0...0.0)
                     }
                 }
+                
+                // Place this inside the List, perhaps after "Environment"
+                Section("Inclined Plane (Ramp)") {
+                    Toggle("Enable Ramp", isOn: Bindable(appModel).showRamp)
+                    
+                    if appModel.showRamp {
+                        VStack {
+                            HStack {
+                                Text("Angle")
+                                Spacer()
+                                Text("\(appModel.rampAngle, specifier: "%.0f")°")
+                                    .foregroundStyle(.blue)
+                            }
+                            // 0 to 60 degrees is usually enough for friction tests
+                            Slider(value: Bindable(appModel).rampAngle, in: 0.0...60.0)
+                        }
+                    }
+                }
 
                 Section("Interaction") {
                     Button("Respawn Object") { appModel.triggerReset() }

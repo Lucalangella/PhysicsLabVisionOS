@@ -65,4 +65,8 @@ class AppModel {
     var linearDamping: Float = 0.1
     
     func triggerReset() { resetSignal.toggle() }
+    
+    // NEW: Ramp Control
+        var showRamp: Bool = false
+        var rampAngle: Float = 15.0 // Degrees
 }
