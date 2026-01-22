@@ -122,6 +122,51 @@ struct PhysicsControlView: View {
             }
             .navigationTitle("Physics Lab")
         }
-        .frame(width: 400, height: 1100)
     }
+}
+
+struct DraggableMenuWrapper: View {
+    // Track the position of the menu
+    @State private var offset = CGSize.zero
+    @State private var lastOffset = CGSize.zero
+
+    var body: some View {
+        PhysicsControlView()
+            .glassBackgroundEffect()
+            // Apply the drag offset here
+            .offset(x: offset.width, y: offset.height)
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        // Update position while dragging
+                        offset = CGSize(
+                            width: lastOffset.width + value.translation.width,
+                            height: lastOffset.height + value.translation.height
+                        )
+                    }
+                    .onEnded { _ in
+                        // Save the new position when let go
+                        lastOffset = offset
+                    }
+            )
+            // Push it back in Z-space slightly so it doesn't clip your nose
+            .transform3DEffect(.init(translation: .init(x: 0, y: 0, z: -400)))
+    }
+}
+
+#Preview("Full App Experience", immersionStyle: .mixed) {
+    ZStack { // 1. Use ZStack to layer them on top of each other
+        ImmersiveView()
+        
+        DraggableMenuWrapper()
+        // 2. Set the Size FIRST
+            .frame(width: 500, height: 1500)
+        
+        
+        // 4. Move it in 3D Space
+        // Note: Z = -500 puts it roughly arm's length away.
+        // -2500 is extremely far away and might make it invisible.
+            .transform3DEffect(.init(translation: .init(x: 1000, y: -1000, z: -2500)))
+    }
+    .environment(AppModel())
 }

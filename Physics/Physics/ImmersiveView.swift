@@ -40,11 +40,55 @@ struct ImmersiveView: View {
             floor.components.set(PhysicsBodyComponent(mode: .static))
             root.addChild(floor)
             
-            // 1. SETUP RAMP (Add this after the Floor setup)
+            // 1. SETUP RAMP (Custom Triangular Prism)
+            var descriptor = MeshDescriptor(name: "prism")
+            
+            // Define vertices for a triangular prism (Front and Back faces)
+            // Top, Bottom-Left, Bottom-Right
+            let frontZ: Float = 0.1
+            let backZ: Float = -0.1
+            let topY: Float = 0.15
+            let bottomY: Float = -0.15
+            let xOffset: Float = 0.15
+            
+            descriptor.positions = MeshBuffers.Positions([
+                // Front Face Vertices (0, 1, 2)
+                [0, topY, frontZ],          // 0: Top
+                [-xOffset, bottomY, frontZ], // 1: Bottom Left
+                [xOffset, bottomY, frontZ],  // 2: Bottom Right
+                
+                // Back Face Vertices (3, 4, 5)
+                [0, topY, backZ],           // 3: Top
+                [-xOffset, bottomY, backZ],  // 4: Bottom Left
+                [xOffset, bottomY, backZ]    // 5: Bottom Right
+            ])
+            
+            descriptor.primitives = .triangles([
+                // Front Face
+                0, 1, 2,
+                
+                // Back Face (Clockwise relative to front to face outwards)
+                3, 5, 4,
+                
+                // Left Side (Rectangular face split into 2 triangles)
+                0, 4, 1,
+                0, 3, 4,
+                
+                // Right Side
+                0, 2, 5,
+                0, 5, 3,
+                
+                // Bottom
+                1, 4, 5,
+                1, 5, 2
+            ])
+            
+            let rampMesh = try! MeshResource.generate(from: [descriptor])
             let ramp = ModelEntity(
-                mesh: .generateBox(width: 1.0, height: 0.02, depth: 4.0), // A long thin board
-                materials: [SimpleMaterial(color: .gray, isMetallic: false)]
+                mesh: rampMesh,
+                materials: [SimpleMaterial(color: .cyan, isMetallic: false)]
             )
+            
             // Position it slightly to the side or center, raised slightly so it doesn't clip the floor
             ramp.position = [0.0, 0.5, -2.0]
 
@@ -270,3 +314,18 @@ struct ImmersiveView: View {
         parent.addChild(marker)
     }
 }
+
+
+#Preview(immersionStyle: .mixed) {
+    ImmersiveView()
+        .environment(AppModel())
+}
+//
+//#Preview("Ramp Visualization", immersionStyle: .mixed) {
+//    let model = AppModel()
+//    model.showRamp = true
+//    model.rampAngle = 30.0
+//    
+//    return ImmersiveView()
+//        .environment(model)
+//}

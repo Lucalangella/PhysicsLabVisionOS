@@ -67,7 +67,7 @@ class AppModel {
     func triggerReset() { resetSignal.toggle() }
     
     // NEW: Ramp Control
-        var showRamp: Bool = false
+        var showRamp: Bool = true
         var rampAngle: Float = 0.0 // Degrees
     
     

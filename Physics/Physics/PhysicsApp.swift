@@ -23,11 +23,10 @@ struct PhysicsLabApp: App {
                     }
                 }
         }
-        // --- 1. SET STYLE TO VOLUMETRIC ---
-        .windowStyle(.volumetric)
-        // --- 2. SET SIZE (Meters) ---
-        // Width: 0.5m, Height: 1.1m (matches your 1100pt height), Depth: 0.5m
-        .defaultSize(width: 0.5, height: 1.1, depth: 0.5, in: .meters)
+        // --- 1. SET STYLE TO AUTOMATIC (Standard Window) ---
+        .windowStyle(.automatic)
+        // --- 2. SET SIZE ---
+        .defaultSize(width: 400, height: 800)
         
         // The Immersive Space (The room around you)
         ImmersiveSpace(id: "PhysicsSpace") {
