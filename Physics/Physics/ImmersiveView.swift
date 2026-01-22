@@ -12,6 +12,7 @@ struct ImmersiveView: View {
     
     // Logic State
     @State private var lastMarkerPosition: SIMD3<Float>? = nil
+    @State private var initialDragPosition: SIMD3<Float>? = nil
     
     var body: some View {
         RealityView { content in
@@ -137,15 +138,31 @@ struct ImmersiveView: View {
                     let entity = value.entity
                     appModel.isDragging = true
                     
-                    // Switch to Kinematic for control
-                    if var body = entity.components[PhysicsBodyComponent.self] {
-                        body.mode = .kinematic
-                        entity.components.set(body)
+                    // 1. Capture initial position if needed
+                    if initialDragPosition == nil {
+                        initialDragPosition = entity.position(relativeTo: entity.parent)
                     }
                     
-                    // Calculate new position relative to parent
-                    var newPos = value.convert(value.location3D, from: .local, to: entity.parent!)
+                    guard let startPos = initialDragPosition else { return }
                     
+                    // 2. Switch to Kinematic for control
+                    // Only do this once per gesture start ideally, or check current mode
+                    if var body = entity.components[PhysicsBodyComponent.self], body.mode != .kinematic {
+                        body.mode = .kinematic
+                        entity.components.set(body)
+                        // Stop any existing momentum
+                        entity.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
+                    }
+                    
+                    // 3. Calculate New Position (Offset-based)
+                    // Convert the start and current locations from local (view) space to the entity's parent space.
+                    let startLocParent = value.convert(value.startLocation3D, from: .local, to: entity.parent!)
+                    let currentLocParent = value.convert(value.location3D, from: .local, to: entity.parent!)
+                    
+                    let translation = currentLocParent - startLocParent
+                    var newPos = startPos + translation
+                    
+                    // 4. Apply Constraints
                     if entity.name == "Ramp" {
                         // RAMP LOGIC: Lock to floor
                         newPos.y = 0.0
@@ -156,13 +173,11 @@ struct ImmersiveView: View {
                         if newPos.y < 0.16 { newPos.y = 0.16 }
                         entity.position = newPos
                     }
-                    
-                    // Reset velocity while dragging
-                    entity.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
                 }
                 .onEnded { value in
                     let entity = value.entity
                     appModel.isDragging = false
+                    initialDragPosition = nil // Reset for next gesture
                     
                     if entity.name == "Ramp" {
                         // RAMP LOGIC: Restore Static
@@ -340,8 +355,13 @@ struct ImmersiveView: View {
                 materials: [SimpleMaterial(color: .cyan.withAlphaComponent(0.8), isMetallic: false)]
             )
             
-            // Update Collision Shape
-            ramp.generateCollisionShapes(recursive: false)
+            // Update Collision Shape (Force Convex Hull for accurate wedge shape)
+            // This prevents the "invisible volume" (bounding box) issue.
+            if let shape = try? ShapeResource.generateConvex(from: rampMesh) {
+                ramp.collision = CollisionComponent(shapes: [shape])
+            } else {
+                ramp.generateCollisionShapes(recursive: false)
+            }
             
             // Ensure Physics Body is Static
             // (Should be already set, but good to ensure if shape changes significantly)
