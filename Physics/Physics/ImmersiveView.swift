@@ -5,7 +5,7 @@ struct ImmersiveView: View {
     @Environment(AppModel.self) var appModel
     
     // Scene References
-    @State private var objectEntity: ModelEntity? // Renamed from boxEntity for clarity
+    @State private var objectEntity: ModelEntity?
     @State private var rootEntity: Entity?
     @State private var traceRoot: Entity?
     @State private var rampEntity: ModelEntity?
@@ -40,67 +40,81 @@ struct ImmersiveView: View {
             floor.components.set(PhysicsBodyComponent(mode: .static))
             root.addChild(floor)
             
-            // 1. SETUP RAMP (Custom Triangular Prism)
-            var descriptor = MeshDescriptor(name: "prism")
+            // ---------------------------------------------------------
+            // 1. SETUP RAMP (Right-Angled Wedge)
+            // ---------------------------------------------------------
+            var descriptor = MeshDescriptor(name: "wedge")
             
-            // Define vertices for a triangular prism (Front and Back faces)
-            // Top, Bottom-Left, Bottom-Right
-            let frontZ: Float = 0.1
-            let backZ: Float = -0.1
-            let topY: Float = 0.15
-            let bottomY: Float = -0.15
-            let xOffset: Float = 0.15
+            // Dimensions
+            let width: Float = 1.0
+            let height: Float = 0.5
+            let depth: Float = 1.0 // Length of the ramp
+            
+            // Coordinates
+            let frontZ: Float = depth / 2
+            let backZ: Float = -depth / 2
+            let topY: Float = height / 2
+            let bottomY: Float = -height / 2
+            let leftX: Float = -width / 2
+            let rightX: Float = width / 2
             
             descriptor.positions = MeshBuffers.Positions([
                 // Front Face Vertices (0, 1, 2)
-                [0, topY, frontZ],          // 0: Top
-                [-xOffset, bottomY, frontZ], // 1: Bottom Left
-                [xOffset, bottomY, frontZ],  // 2: Bottom Right
+                // We align Top X with Left X to make it a right-angled wedge
+                [leftX, topY, frontZ],      // 0: Top Left (High Point)
+                [leftX, bottomY, frontZ],   // 1: Bottom Left (Corner)
+                [rightX, bottomY, frontZ],  // 2: Bottom Right (End of Slope)
                 
                 // Back Face Vertices (3, 4, 5)
-                [0, topY, backZ],           // 3: Top
-                [-xOffset, bottomY, backZ],  // 4: Bottom Left
-                [xOffset, bottomY, backZ]    // 5: Bottom Right
+                [leftX, topY, backZ],       // 3: Top Left (High Point)
+                [leftX, bottomY, backZ],    // 4: Bottom Left (Corner)
+                [rightX, bottomY, backZ]    // 5: Bottom Right (End of Slope)
             ])
             
             descriptor.primitives = .triangles([
                 // Front Face
                 0, 1, 2,
                 
-                // Back Face (Clockwise relative to front to face outwards)
+                // Back Face (Clockwise)
                 3, 5, 4,
                 
-                // Left Side (Rectangular face split into 2 triangles)
+                // Vertical Back Wall (Rectangle formed by 0-1 and 3-4)
                 0, 4, 1,
                 0, 3, 4,
                 
-                // Right Side
+                // Sloped Face (Hypotenuse Rectangle)
                 0, 2, 5,
                 0, 5, 3,
                 
-                // Bottom
+                // Bottom Face
                 1, 4, 5,
                 1, 5, 2
             ])
             
-            let rampMesh = try! MeshResource.generate(from: [descriptor])
-            let ramp = ModelEntity(
-                mesh: rampMesh,
-                materials: [SimpleMaterial(color: .cyan, isMetallic: false)]
-            )
-            
-            // Position it slightly to the side or center, raised slightly so it doesn't clip the floor
-            ramp.position = [0.0, 0.5, -2.0]
+            // Generate Mesh
+            if let rampMesh = try? MeshResource.generate(from: [descriptor]) {
+                let ramp = ModelEntity(
+                    mesh: rampMesh,
+                    materials: [SimpleMaterial(color: .cyan.withAlphaComponent(0.8), isMetallic: false)]
+                )
+                
+                // Position: Moved back and raised slightly to sit on the floor
+                // Note: The mesh center is (0,0,0), so 'bottomY' is -0.25.
+                // To put it on floor (y=0), we raise it by 0.25 (height/2).
+                ramp.position = [0.0, 0.25, -2.0]
+                
+                // Physics: Static (won't move) but objects can hit it
+                ramp.generateCollisionShapes(recursive: false)
+                ramp.components.set(PhysicsBodyComponent(mode: .static))
+                
+                // Initial visibility state
+                ramp.isEnabled = appModel.showRamp
+                
+                root.addChild(ramp)
+                self.rampEntity = ramp
+            }
+            // ---------------------------------------------------------
 
-            // Physics for Ramp (Static, so it doesn't fall)
-            ramp.generateCollisionShapes(recursive: false)
-            ramp.components.set(PhysicsBodyComponent(mode: .static))
-
-            // Hide it initially if showRamp is false
-            ramp.isEnabled = appModel.showRamp
-
-            root.addChild(ramp)
-            self.rampEntity = ramp
             
             // --- CREATE INITIAL OBJECT ---
             let object = ModelEntity() // Empty initially
@@ -172,27 +186,31 @@ struct ImmersiveView: View {
                     let entity = value.entity
                     appModel.isDragging = true
                     
+                    // Temporarily make kinematic to control position
                     if var body = entity.components[PhysicsBodyComponent.self] {
                         body.mode = .kinematic
                         entity.components.set(body)
                     }
                     
+                    // Constrain movement to floor height
                     var newPos = value.convert(value.location3D, from: .local, to: entity.parent!)
                     if newPos.y < 0.16 { newPos.y = 0.16 }
                     entity.position = newPos
                     
+                    // Reset velocity while dragging
                     entity.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
                 }
                 .onEnded { value in
                     let entity = value.entity
                     appModel.isDragging = false
                     
+                    // Restore original physics mode
                     if var body = entity.components[PhysicsBodyComponent.self] {
                         body.mode = appModel.selectedMode.rkMode
                         entity.components.set(body)
                     }
                     
-                    // Force Drop
+                    // Stop movement on drop
                     if appModel.selectedMode == .dynamic {
                         var motion = PhysicsMotionComponent()
                         motion.linearVelocity = .zero
@@ -222,23 +240,20 @@ struct ImmersiveView: View {
                 lastMarkerPosition = nil
             }
         }
-        // NEW: Shape Change
         .onChange(of: appModel.selectedShape) {
             updateShape()
         }
-        // NEW: Handle Ramp Changes
+        // Handle Ramp Visibility
         .onChange(of: appModel.showRamp) {
             rampEntity?.isEnabled = appModel.showRamp
         }
+        // Handle Ramp Rotation
         .onChange(of: appModel.rampAngle) {
             guard let ramp = rampEntity else { return }
             
-            // Convert degrees to radians
             let radians = appModel.rampAngle * (Float.pi / 180.0)
             
-            // Rotate around the Z axis (to tilt sideways) or X axis (to tilt forward)
-            // Here we tilt around X axis so it slopes towards the camera or away
-            // Let's tilt it so it acts like a slide
+            // Standard Rotation around X-axis
             ramp.transform.rotation = simd_quatf(angle: radians, axis: [1, 0, 0])
         }
     }
@@ -247,8 +262,6 @@ struct ImmersiveView: View {
     func updateShape() {
         guard let obj = objectEntity else { return }
         
-        // 1. Generate new Mesh and Material
-        // We use a different color for each shape to make it visually distinct
         let newMesh: MeshResource
         let newMaterial: SimpleMaterial
         
@@ -264,15 +277,8 @@ struct ImmersiveView: View {
             newMaterial = SimpleMaterial(color: .green, isMetallic: false)
         }
         
-        // 2. Apply Mesh
         obj.model = ModelComponent(mesh: newMesh, materials: [newMaterial])
-        
-        // 3. Regenerate Collision Shape (Critical for physics!)
-        // 'recursive: false' is fine since it's a single primitive
         obj.generateCollisionShapes(recursive: false)
-        
-        // Note: We don't need to re-add the physics body component;
-        // RealityKit will use the new collision shape automatically for the existing body.
     }
     
     func updatePhysicsProperties() {
@@ -314,7 +320,6 @@ struct ImmersiveView: View {
         parent.addChild(marker)
     }
 }
-
 
 #Preview(immersionStyle: .mixed) {
     ImmersiveView()
