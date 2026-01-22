@@ -41,83 +41,34 @@ struct ImmersiveView: View {
             root.addChild(floor)
             
             // ---------------------------------------------------------
-            // 1. SETUP RAMP (Right-Angled Wedge)
+            // 1. SETUP RAMP
             // ---------------------------------------------------------
-            var descriptor = MeshDescriptor(name: "wedge")
+            let ramp = ModelEntity()
+            ramp.name = "Ramp"
+            ramp.position = [0, 0, -2.0] // Base on floor
             
-            // Dimensions
-            let width: Float = 1.0
-            let height: Float = 0.5
-            let depth: Float = 1.0 // Length of the ramp
+            // Allow user to grab it
+            ramp.components.set(InputTargetComponent(allowedInputTypes: .all))
             
-            // Coordinates
-            let frontZ: Float = depth / 2
-            let backZ: Float = -depth / 2
-            let topY: Float = height / 2
-            let bottomY: Float = -height / 2
-            let leftX: Float = -width / 2
-            let rightX: Float = width / 2
+            // Physics: Static (won't move) but objects can hit it
+            ramp.components.set(PhysicsBodyComponent(mode: .static))
             
-            descriptor.positions = MeshBuffers.Positions([
-                // Front Face Vertices (0, 1, 2)
-                // We align Top X with Left X to make it a right-angled wedge
-                [leftX, topY, frontZ],      // 0: Top Left (High Point)
-                [leftX, bottomY, frontZ],   // 1: Bottom Left (Corner)
-                [rightX, bottomY, frontZ],  // 2: Bottom Right (End of Slope)
-                
-                // Back Face Vertices (3, 4, 5)
-                [leftX, topY, backZ],       // 3: Top Left (High Point)
-                [leftX, bottomY, backZ],    // 4: Bottom Left (Corner)
-                [rightX, bottomY, backZ]    // 5: Bottom Right (End of Slope)
-            ])
+            // Apply initial rotation
+            let initialRadians = appModel.rampRotation * (Float.pi / 180.0)
+            ramp.transform.rotation = simd_quatf(angle: initialRadians, axis: [0, 1, 0])
             
-            descriptor.primitives = .triangles([
-                // Front Face
-                0, 1, 2,
-                
-                // Back Face (Clockwise)
-                3, 5, 4,
-                
-                // Vertical Back Wall (Rectangle formed by 0-1 and 3-4)
-                0, 4, 1,
-                0, 3, 4,
-                
-                // Sloped Face (Hypotenuse Rectangle)
-                0, 2, 5,
-                0, 5, 3,
-                
-                // Bottom Face
-                1, 4, 5,
-                1, 5, 2
-            ])
+            root.addChild(ramp)
+            self.rampEntity = ramp
             
-            // Generate Mesh
-            if let rampMesh = try? MeshResource.generate(from: [descriptor]) {
-                let ramp = ModelEntity(
-                    mesh: rampMesh,
-                    materials: [SimpleMaterial(color: .cyan.withAlphaComponent(0.8), isMetallic: false)]
-                )
-                
-                // Position: Moved back and raised slightly to sit on the floor
-                // Note: The mesh center is (0,0,0), so 'bottomY' is -0.25.
-                // To put it on floor (y=0), we raise it by 0.25 (height/2).
-                ramp.position = [0.0, 0.25, -2.0]
-                
-                // Physics: Static (won't move) but objects can hit it
-                ramp.generateCollisionShapes(recursive: false)
-                ramp.components.set(PhysicsBodyComponent(mode: .static))
-                
-                // Initial visibility state
-                ramp.isEnabled = appModel.showRamp
-                
-                root.addChild(ramp)
-                self.rampEntity = ramp
-            }
+            // Generate initial mesh
+            updateRamp()
+            
             // ---------------------------------------------------------
 
             
             // --- CREATE INITIAL OBJECT ---
             let object = ModelEntity() // Empty initially
+            object.name = "PhysicsObject"
             object.position = [0, 1.5, -2.0]
             
             // Basic Components
@@ -186,16 +137,25 @@ struct ImmersiveView: View {
                     let entity = value.entity
                     appModel.isDragging = true
                     
-                    // Temporarily make kinematic to control position
+                    // Switch to Kinematic for control
                     if var body = entity.components[PhysicsBodyComponent.self] {
                         body.mode = .kinematic
                         entity.components.set(body)
                     }
                     
-                    // Constrain movement to floor height
+                    // Calculate new position relative to parent
                     var newPos = value.convert(value.location3D, from: .local, to: entity.parent!)
-                    if newPos.y < 0.16 { newPos.y = 0.16 }
-                    entity.position = newPos
+                    
+                    if entity.name == "Ramp" {
+                        // RAMP LOGIC: Lock to floor
+                        newPos.y = 0.0
+                        entity.position = newPos
+                        
+                    } else {
+                        // OBJECT LOGIC: Constrain to min height (prevent clipping floor)
+                        if newPos.y < 0.16 { newPos.y = 0.16 }
+                        entity.position = newPos
+                    }
                     
                     // Reset velocity while dragging
                     entity.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
@@ -204,18 +164,26 @@ struct ImmersiveView: View {
                     let entity = value.entity
                     appModel.isDragging = false
                     
-                    // Restore original physics mode
-                    if var body = entity.components[PhysicsBodyComponent.self] {
-                        body.mode = appModel.selectedMode.rkMode
-                        entity.components.set(body)
-                    }
-                    
-                    // Stop movement on drop
-                    if appModel.selectedMode == .dynamic {
-                        var motion = PhysicsMotionComponent()
-                        motion.linearVelocity = .zero
-                        motion.angularVelocity = .zero
-                        entity.components.set(motion)
+                    if entity.name == "Ramp" {
+                        // RAMP LOGIC: Restore Static
+                        if var body = entity.components[PhysicsBodyComponent.self] {
+                            body.mode = .static
+                            entity.components.set(body)
+                        }
+                    } else {
+                        // OBJECT LOGIC: Restore Selected Mode
+                        if var body = entity.components[PhysicsBodyComponent.self] {
+                            body.mode = appModel.selectedMode.rkMode
+                            entity.components.set(body)
+                        }
+                        
+                        // Stop movement on drop if dynamic
+                        if appModel.selectedMode == .dynamic {
+                            var motion = PhysicsMotionComponent()
+                            motion.linearVelocity = .zero
+                            motion.angularVelocity = .zero
+                            entity.components.set(motion)
+                        }
                     }
                 }
         )
@@ -247,14 +215,15 @@ struct ImmersiveView: View {
         .onChange(of: appModel.showRamp) {
             rampEntity?.isEnabled = appModel.showRamp
         }
-        // Handle Ramp Rotation
-        .onChange(of: appModel.rampAngle) {
+        // Handle Ramp Changes
+        .onChange(of: [appModel.rampAngle, appModel.rampLength, appModel.rampWidth]) {
+            updateRamp()
+        }
+        // Handle Ramp Rotation (Yaw)
+        .onChange(of: appModel.rampRotation) {
             guard let ramp = rampEntity else { return }
-            
-            let radians = appModel.rampAngle * (Float.pi / 180.0)
-            
-            // Standard Rotation around X-axis
-            ramp.transform.rotation = simd_quatf(angle: radians, axis: [1, 0, 0])
+            let radians = appModel.rampRotation * (Float.pi / 180.0)
+            ramp.transform.rotation = simd_quatf(angle: radians, axis: [0, 1, 0])
         }
     }
     
@@ -307,6 +276,84 @@ struct ImmersiveView: View {
         }
     }
     
+    func updateRamp() {
+        guard let ramp = rampEntity else { return }
+        
+        // Dimensions
+        let slopeLength = appModel.rampLength
+        let radians = appModel.rampAngle * (Float.pi / 180.0)
+        
+        // Calculate Height and Base
+        let height = slopeLength * sin(radians)
+        let baseLength = slopeLength * cos(radians)
+        
+        let width = appModel.rampWidth // Depth of the ramp (track width)
+        
+        var descriptor = MeshDescriptor(name: "wedge")
+        
+        // Coordinates
+        let frontZ: Float = width / 2
+        let backZ: Float = -width / 2
+        
+        // We want the slope to go from Left (High) to Right (Low)
+        let leftX: Float = -baseLength / 2
+        let rightX: Float = baseLength / 2
+        
+        let topY: Float = height
+        let bottomY: Float = 0.0
+        
+        descriptor.positions = MeshBuffers.Positions([
+            // Front Face Vertices (0, 1, 2)
+            [leftX, topY, frontZ],      // 0: Top Left (High Point)
+            [leftX, bottomY, frontZ],   // 1: Bottom Left (Corner)
+            [rightX, bottomY, frontZ],  // 2: Bottom Right (End of Slope)
+            
+            // Back Face Vertices (3, 4, 5)
+            [leftX, topY, backZ],       // 3: Top Left (High Point)
+            [leftX, bottomY, backZ],    // 4: Bottom Left (Corner)
+            [rightX, bottomY, backZ]    // 5: Bottom Right (End of Slope)
+        ])
+        
+        descriptor.primitives = .triangles([
+            // Front Face
+            0, 1, 2,
+            
+            // Back Face (Clockwise)
+            3, 5, 4,
+            
+            // Vertical Back Wall (Left Side)
+            0, 4, 1,
+            0, 3, 4,
+            
+            // Sloped Face (Hypotenuse Rectangle)
+            0, 2, 5,
+            0, 5, 3,
+            
+            // Bottom Face
+            1, 4, 5,
+            1, 5, 2
+        ])
+        
+        if let rampMesh = try? MeshResource.generate(from: [descriptor]) {
+            ramp.model = ModelComponent(
+                mesh: rampMesh,
+                materials: [SimpleMaterial(color: .cyan.withAlphaComponent(0.8), isMetallic: false)]
+            )
+            
+            // Update Collision Shape
+            ramp.generateCollisionShapes(recursive: false)
+            
+            // Ensure Physics Body is Static
+            // (Should be already set, but good to ensure if shape changes significantly)
+            if ramp.components[PhysicsBodyComponent.self] == nil {
+                ramp.components.set(PhysicsBodyComponent(mode: .static))
+            }
+            
+            // Ensure visibility
+            ramp.isEnabled = appModel.showRamp
+        }
+    }
+    
     // MARK: - Path Plotter
     private func addPathMarker(at position: SIMD3<Float>) {
         guard let parent = traceRoot else { return }
@@ -325,12 +372,3 @@ struct ImmersiveView: View {
     ImmersiveView()
         .environment(AppModel())
 }
-//
-//#Preview("Ramp Visualization", immersionStyle: .mixed) {
-//    let model = AppModel()
-//    model.showRamp = true
-//    model.rampAngle = 30.0
-//    
-//    return ImmersiveView()
-//        .environment(model)
-//}

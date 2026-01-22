@@ -45,6 +45,36 @@ struct PhysicsControlView: View {
                             // 0 to 60 degrees is usually enough for friction tests
                             Slider(value: Bindable(appModel).rampAngle, in: 0.0...60.0)
                         }
+                        
+                        VStack {
+                            HStack {
+                                Text("Length")
+                                Spacer()
+                                Text(String(format: "%.1f m", appModel.rampLength))
+                                    .foregroundStyle(.blue)
+                            }
+                            Slider(value: Bindable(appModel).rampLength, in: 0.5...5.0)
+                        }
+                        
+                        VStack {
+                            HStack {
+                                Text("Width")
+                                Spacer()
+                                Text(String(format: "%.1f m", appModel.rampWidth))
+                                    .foregroundStyle(.blue)
+                            }
+                            Slider(value: Bindable(appModel).rampWidth, in: 0.5...5.0)
+                        }
+                        
+                        VStack {
+                            HStack {
+                                Text("Rotation")
+                                Spacer()
+                                Text("\(appModel.rampRotation, specifier: "%.0f")°")
+                                    .foregroundStyle(.blue)
+                            }
+                            Slider(value: Bindable(appModel).rampRotation, in: 0.0...360.0)
+                        }
                     }
                 }
 
