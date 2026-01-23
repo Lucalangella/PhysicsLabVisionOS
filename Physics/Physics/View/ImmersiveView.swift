@@ -2,7 +2,7 @@ import SwiftUI
 import RealityKit
 
 struct ImmersiveView: View {
-    @Environment(AppModel.self) var appModel
+    @Environment(AppViewModel.self) var appViewModel
     
     // Scene References
     @State private var objectEntity: ModelEntity?
@@ -55,7 +55,7 @@ struct ImmersiveView: View {
             ramp.components.set(PhysicsBodyComponent(mode: .static))
             
             // Apply initial rotation
-            let initialRadians = appModel.rampRotation * (Float.pi / 180.0)
+            let initialRadians = appViewModel.rampRotation * (Float.pi / 180.0)
             ramp.transform.rotation = simd_quatf(angle: initialRadians, axis: [0, 1, 0])
             
             root.addChild(ramp)
@@ -77,16 +77,16 @@ struct ImmersiveView: View {
             
             // Initial Physics Setup
             let material = PhysicsMaterialResource.generate(
-                staticFriction: appModel.staticFriction,
-                dynamicFriction: appModel.dynamicFriction,
-                restitution: appModel.restitution
+                staticFriction: appViewModel.staticFriction,
+                dynamicFriction: appViewModel.dynamicFriction,
+                restitution: appViewModel.restitution
             )
             var physicsBody = PhysicsBodyComponent(
-                massProperties: .init(mass: appModel.mass),
+                massProperties: .init(mass: appViewModel.mass),
                 material: material,
-                mode: appModel.selectedMode.rkMode
+                mode: appViewModel.selectedMode.rkMode
             )
-            physicsBody.linearDamping = appModel.linearDamping
+            physicsBody.linearDamping = appViewModel.linearDamping
             object.components.set(physicsBody)
             
             root.addChild(object)
@@ -103,17 +103,17 @@ struct ImmersiveView: View {
                 // 1. Update Speed
                 let velocity = motion.linearVelocity
                 let speed = length(velocity)
-                appModel.currentSpeed = speed
+                appViewModel.currentSpeed = speed
                 
                 // 1b. Apply Advanced Air Resistance (Drag)
-                if appModel.useAdvancedDrag {
+                if appViewModel.useAdvancedDrag {
                     // Formula: Fd = 0.5 * rho * v^2 * Cd * A
                     // Direction: Opposite to velocity
                     
                     if speed > 0.001 { // Avoid divide by zero
-                        let rho = appModel.airDensity
-                        let A = appModel.crossSectionalArea
-                        let Cd = appModel.dragCoefficient
+                        let rho = appViewModel.airDensity
+                        let A = appViewModel.crossSectionalArea
+                        let Cd = appViewModel.dragCoefficient
                         
                         let dragMagnitude = 0.5 * rho * (speed * speed) * Cd * A
                         
@@ -129,12 +129,12 @@ struct ImmersiveView: View {
                 // 2. Update Gravity
                 if let root = rootEntity,
                    var physSim = root.components[PhysicsSimulationComponent.self] {
-                    physSim.gravity = [0, appModel.gravity, 0]
+                    physSim.gravity = [0, appViewModel.gravity, 0]
                     root.components.set(physSim)
                 }
                 
                 // 3. Update Path Plotter
-                if appModel.showPath {
+                if appViewModel.showPath {
                     let currentPos = obj.position(relativeTo: nil)
                     
                     if let lastPos = lastMarkerPosition {
@@ -157,7 +157,7 @@ struct ImmersiveView: View {
                 .targetedToAnyEntity()
                 .onChanged { value in
                     let entity = value.entity
-                    appModel.isDragging = true
+                    appViewModel.isDragging = true
                     
                     // 1. Capture initial position if needed
                     if initialDragPosition == nil {
@@ -197,7 +197,7 @@ struct ImmersiveView: View {
                 }
                 .onEnded { value in
                     let entity = value.entity
-                    appModel.isDragging = false
+                    appViewModel.isDragging = false
                     initialDragPosition = nil // Reset for next gesture
                     
                     if entity.name == "Ramp" {
@@ -209,12 +209,12 @@ struct ImmersiveView: View {
                     } else {
                         // OBJECT LOGIC: Restore Selected Mode
                         if var body = entity.components[PhysicsBodyComponent.self] {
-                            body.mode = appModel.selectedMode.rkMode
+                            body.mode = appViewModel.selectedMode.rkMode
                             entity.components.set(body)
                         }
                         
                         // Stop movement on drop if dynamic
-                        if appModel.selectedMode == .dynamic {
+                        if appViewModel.selectedMode == .dynamic {
                             var motion = PhysicsMotionComponent()
                             motion.linearVelocity = .zero
                             motion.angularVelocity = .zero
@@ -224,7 +224,7 @@ struct ImmersiveView: View {
                 }
         )
         // --- EVENT HANDLERS ---
-        .onChange(of: appModel.resetSignal) {
+        .onChange(of: appViewModel.resetSignal) {
             guard let obj = objectEntity else { return }
             obj.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
             obj.position = [0, 1.5, -2.0]
@@ -232,36 +232,36 @@ struct ImmersiveView: View {
             traceRoot?.children.removeAll()
             lastMarkerPosition = nil
         }
-        .onChange(of: [appModel.mass, appModel.restitution, appModel.dynamicFriction, appModel.staticFriction, appModel.linearDamping, appModel.airDensity] as [Float]) {
+        .onChange(of: [appViewModel.mass, appViewModel.restitution, appViewModel.dynamicFriction, appViewModel.staticFriction, appViewModel.linearDamping, appViewModel.airDensity] as [Float]) {
             updatePhysicsProperties()
         }
-        .onChange(of: appModel.useAdvancedDrag) {
+        .onChange(of: appViewModel.useAdvancedDrag) {
             updatePhysicsProperties()
         }
-        .onChange(of: appModel.selectedMode) {
+        .onChange(of: appViewModel.selectedMode) {
             updatePhysicsProperties()
         }
-        .onChange(of: appModel.showPath) {
-            if !appModel.showPath {
+        .onChange(of: appViewModel.showPath) {
+            if !appViewModel.showPath {
                 traceRoot?.children.removeAll()
                 lastMarkerPosition = nil
             }
         }
-        .onChange(of: appModel.selectedShape) {
+        .onChange(of: appViewModel.selectedShape) {
             updateShape()
         }
         // Handle Ramp Visibility
-        .onChange(of: appModel.showRamp) {
-            rampEntity?.isEnabled = appModel.showRamp
+        .onChange(of: appViewModel.showRamp) {
+            rampEntity?.isEnabled = appViewModel.showRamp
         }
         // Handle Ramp Changes
-        .onChange(of: [appModel.rampAngle, appModel.rampLength, appModel.rampWidth]) {
+        .onChange(of: [appViewModel.rampAngle, appViewModel.rampLength, appViewModel.rampWidth]) {
             updateRamp()
         }
         // Handle Ramp Rotation (Yaw)
-        .onChange(of: appModel.rampRotation) {
+        .onChange(of: appViewModel.rampRotation) {
             guard let ramp = rampEntity else { return }
-            let radians = appModel.rampRotation * (Float.pi / 180.0)
+            let radians = appViewModel.rampRotation * (Float.pi / 180.0)
             ramp.transform.rotation = simd_quatf(angle: radians, axis: [0, 1, 0])
         }
     }
@@ -273,7 +273,7 @@ struct ImmersiveView: View {
         let newMesh: MeshResource
         let newMaterial: SimpleMaterial
         
-        switch appModel.selectedShape {
+        switch appViewModel.selectedShape {
         case .box:
             newMesh = .generateBox(size: 0.3)
             newMaterial = SimpleMaterial(color: .red, isMetallic: false)
@@ -293,19 +293,19 @@ struct ImmersiveView: View {
         guard let obj = objectEntity else { return }
         
         let newMaterial = PhysicsMaterialResource.generate(
-            staticFriction: appModel.staticFriction,
-            dynamicFriction: appModel.dynamicFriction,
-            restitution: appModel.restitution
+            staticFriction: appViewModel.staticFriction,
+            dynamicFriction: appViewModel.dynamicFriction,
+            restitution: appViewModel.restitution
         )
         
         var bodyComponent = obj.components[PhysicsBodyComponent.self] ?? PhysicsBodyComponent()
-        bodyComponent.massProperties.mass = appModel.mass
+        bodyComponent.massProperties.mass = appViewModel.mass
         bodyComponent.material = newMaterial
-        bodyComponent.mode = appModel.selectedMode.rkMode
+        bodyComponent.mode = appViewModel.selectedMode.rkMode
         
         // If Advanced Drag is on, we apply force manually, so disable built-in linear damping
         // Otherwise use the slider value
-        bodyComponent.linearDamping = appModel.useAdvancedDrag ? 0.0 : appModel.linearDamping
+        bodyComponent.linearDamping = appViewModel.useAdvancedDrag ? 0.0 : appViewModel.linearDamping
         
         obj.components.set(bodyComponent)
     }
@@ -314,14 +314,14 @@ struct ImmersiveView: View {
         guard let ramp = rampEntity else { return }
         
         // Dimensions
-        let slopeLength = appModel.rampLength
-        let radians = appModel.rampAngle * (Float.pi / 180.0)
+        let slopeLength = appViewModel.rampLength
+        let radians = appViewModel.rampAngle * (Float.pi / 180.0)
         
         // Calculate Height and Base
         let height = slopeLength * sin(radians)
         let baseLength = slopeLength * cos(radians)
         
-        let width = appModel.rampWidth // Depth of the ramp (track width)
+        let width = appViewModel.rampWidth // Depth of the ramp (track width)
         
         var descriptor = MeshDescriptor(name: "wedge")
         
@@ -389,7 +389,7 @@ struct ImmersiveView: View {
             }
             
             // Ensure visibility
-            ramp.isEnabled = appModel.showRamp
+            ramp.isEnabled = appViewModel.showRamp
         }
     }
     
@@ -409,5 +409,5 @@ struct ImmersiveView: View {
 
 #Preview(immersionStyle: .mixed) {
     ImmersiveView()
-        .environment(AppModel())
+        .environment(AppViewModel())
 }

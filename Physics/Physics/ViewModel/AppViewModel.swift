@@ -1,5 +1,5 @@
 //
-//  AppModel.swift
+//  AppViewModel.swift
 //  Physics
 //
 //  Created by Luca Langella 1 on 20/01/26.
@@ -9,35 +9,8 @@ import SwiftUI
 import Observation
 import RealityKit
 
-enum ImmersiveSpaceState {
-    case closed
-    case inTransition
-    case open
-}
-
-// NEW: Shape Options
-enum ShapeOption: String, CaseIterable, Identifiable {
-    case box = "Cube"
-    case sphere = "Sphere"
-    case cylinder = "Cylinder"
-    
-    var id: String { self.rawValue }
-}
-
-enum PhysicsModeOption: String, CaseIterable, Identifiable {
-    case dynamic = "Dynamic"
-    
-    var id: String { self.rawValue }
-    
-    var rkMode: PhysicsBodyMode {
-        switch self {
-        case .dynamic: return .dynamic
-        }
-    }
-}
-
 @Observable
-class AppModel {
+class AppViewModel {
     // --- System States ---
     var immersiveSpaceState: ImmersiveSpaceState = .closed
     var resetSignal = false
@@ -85,11 +58,9 @@ class AppModel {
     func triggerReset() { resetSignal.toggle() }
     
     // NEW: Ramp Control
-        var showRamp: Bool = true
-        var rampAngle: Float = 30.0 // Degrees
-        var rampLength: Float = 2.0 // Meters
-        var rampWidth: Float = 1.0 // Meters
-        var rampRotation: Float = 0.0 // Degrees (Yaw)
-    
-    
+    var showRamp: Bool = true
+    var rampAngle: Float = 30.0 // Degrees
+    var rampLength: Float = 2.0 // Meters
+    var rampWidth: Float = 1.0 // Meters
+    var rampRotation: Float = 0.0 // Degrees (Yaw)
 }

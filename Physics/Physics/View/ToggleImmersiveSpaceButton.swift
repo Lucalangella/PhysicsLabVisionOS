@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ToggleImmersiveSpaceButton: View {
-    @Environment(AppModel.self) var appModel
+    @Environment(AppViewModel.self) var appViewModel
     @Environment(\.openImmersiveSpace) var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) var dismissImmersiveSpace
 
@@ -16,29 +16,29 @@ struct ToggleImmersiveSpaceButton: View {
         Button {
             Task {
                 // 1. If currently OPEN, close it
-                if appModel.immersiveSpaceState == .open {
-                    appModel.immersiveSpaceState = .inTransition
+                if appViewModel.immersiveSpaceState == .open {
+                    appViewModel.immersiveSpaceState = .inTransition
                     await dismissImmersiveSpace()
-                    appModel.immersiveSpaceState = .closed
+                    appViewModel.immersiveSpaceState = .closed
                 }
                 // 2. If currently CLOSED, open it
-                else if appModel.immersiveSpaceState == .closed {
-                    appModel.immersiveSpaceState = .inTransition
+                else if appViewModel.immersiveSpaceState == .closed {
+                    appViewModel.immersiveSpaceState = .inTransition
                     switch await openImmersiveSpace(id: "PhysicsSpace") {
                     case .opened:
-                        appModel.immersiveSpaceState = .open
+                        appViewModel.immersiveSpaceState = .open
                     case .userCancelled, .error:
-                        appModel.immersiveSpaceState = .closed
+                        appViewModel.immersiveSpaceState = .closed
                     @unknown default:
-                        appModel.immersiveSpaceState = .closed
+                        appViewModel.immersiveSpaceState = .closed
                     }
                 }
             }
         } label: {
             // Update the label based on the state
-            Text(appModel.immersiveSpaceState == .open ? "Stop Physics" : "Start Physics")
+            Text(appViewModel.immersiveSpaceState == .open ? "Stop Physics" : "Start Physics")
         }
         // Disable the button while the OS is transitioning states
-        .disabled(appModel.immersiveSpaceState == .inTransition)
+        .disabled(appViewModel.immersiveSpaceState == .inTransition)
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct PhysicsLabApp: App {
-    @State private var appModel = AppModel()
+    @State private var appViewModel = AppViewModel()
     
     // Note: We don't necessarily need 'openImmersiveSpace' if we are just using a Volume,
     // but we keep it here in case you want to expand later.
@@ -11,15 +11,15 @@ struct PhysicsLabApp: App {
     var body: some Scene {
         WindowGroup {
             PhysicsControlView()
-                .environment(appModel)
+                .environment(appViewModel)
                 .task {
                     // In a Volumetric app, we usually don't open an ImmersiveSpace immediately,
                     // because the Volume *is* the space.
                     // But if you want the "World" physics, we can keep this.
-                    if appModel.immersiveSpaceState == .closed {
-                        appModel.immersiveSpaceState = .inTransition
+                    if appViewModel.immersiveSpaceState == .closed {
+                        appViewModel.immersiveSpaceState = .inTransition
                         await openImmersiveSpace(id: "PhysicsSpace")
-                        appModel.immersiveSpaceState = .open
+                        appViewModel.immersiveSpaceState = .open
                     }
                 }
         }
@@ -31,7 +31,7 @@ struct PhysicsLabApp: App {
         // The Immersive Space (The room around you)
         ImmersiveSpace(id: "PhysicsSpace") {
             ImmersiveView()
-                .environment(appModel)
+                .environment(appViewModel)
         }
     }
 }

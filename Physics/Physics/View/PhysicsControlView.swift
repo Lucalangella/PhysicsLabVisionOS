@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PhysicsControlView: View {
-    @Environment(AppModel.self) var appModel
+    @Environment(AppViewModel.self) var appViewModel
 
     var body: some View {
         NavigationStack {
@@ -10,7 +10,7 @@ struct PhysicsControlView: View {
                     HStack {
                         Label("Current Speed", systemImage: "speedometer")
                         Spacer()
-                        Text("\(appModel.currentSpeed, specifier: "%.2f") m/s")
+                        Text("\(appViewModel.currentSpeed, specifier: "%.2f") m/s")
                             .font(.monospacedDigit(.body)())
                             .foregroundStyle(.secondary)
                     }
@@ -23,74 +23,74 @@ struct PhysicsControlView: View {
                         HStack {
                             Text("Gravity (Y-Axis)")
                             Spacer()
-                            Text(String(format: "%.1f m/s²", appModel.gravity))
+                            Text(String(format: "%.1f m/s²", appViewModel.gravity))
                                 .foregroundStyle(.blue)
                         }
-                        Slider(value: Bindable(appModel).gravity, in: -20.0...0.0)
+                        Slider(value: Bindable(appViewModel).gravity, in: -20.0...0.0)
                     }
                 }
                 
                 // Place this inside the List, perhaps after "Environment"
                 Section("Inclined Plane (Ramp)") {
-                    Toggle("Enable Ramp", isOn: Bindable(appModel).showRamp)
+                    Toggle("Enable Ramp", isOn: Bindable(appViewModel).showRamp)
                     
-                    if appModel.showRamp {
+                    if appViewModel.showRamp {
                         VStack {
                             HStack {
                                 Text("Angle")
                                 Spacer()
-                                Text("\(appModel.rampAngle, specifier: "%.0f")°")
+                                Text("\(appViewModel.rampAngle, specifier: "%.0f")°")
                                     .foregroundStyle(.blue)
                             }
                             // 0 to 60 degrees is usually enough for friction tests
-                            Slider(value: Bindable(appModel).rampAngle, in: 0.0...60.0)
+                            Slider(value: Bindable(appViewModel).rampAngle, in: 0.0...60.0)
                         }
                         
                         VStack {
                             HStack {
                                 Text("Length")
                                 Spacer()
-                                Text(String(format: "%.1f m", appModel.rampLength))
+                                Text(String(format: "%.1f m", appViewModel.rampLength))
                                     .foregroundStyle(.blue)
                             }
-                            Slider(value: Bindable(appModel).rampLength, in: 0.5...5.0)
+                            Slider(value: Bindable(appViewModel).rampLength, in: 0.5...5.0)
                         }
                         
                         VStack {
                             HStack {
                                 Text("Width")
                                 Spacer()
-                                Text(String(format: "%.1f m", appModel.rampWidth))
+                                Text(String(format: "%.1f m", appViewModel.rampWidth))
                                     .foregroundStyle(.blue)
                             }
-                            Slider(value: Bindable(appModel).rampWidth, in: 0.5...5.0)
+                            Slider(value: Bindable(appViewModel).rampWidth, in: 0.5...5.0)
                         }
                         
                         VStack {
                             HStack {
                                 Text("Rotation")
                                 Spacer()
-                                Text("\(appModel.rampRotation, specifier: "%.0f")°")
+                                Text("\(appViewModel.rampRotation, specifier: "%.0f")°")
                                     .foregroundStyle(.blue)
                             }
-                            Slider(value: Bindable(appModel).rampRotation, in: 0.0...360.0)
+                            Slider(value: Bindable(appViewModel).rampRotation, in: 0.0...360.0)
                         }
                     }
                 }
 
                 Section("Interaction") {
-                    Button("Respawn Object") { appModel.triggerReset() }
+                    Button("Respawn Object") { appViewModel.triggerReset() }
                     
-                    Toggle("Show Motion Path (Plot)", isOn: Bindable(appModel).showPath)
+                    Toggle("Show Motion Path (Plot)", isOn: Bindable(appViewModel).showPath)
                     
                     HStack {
                         Text("Status")
                         Spacer()
-                        Text(appModel.isDragging ? "HOLDING" : "IDLE")
+                        Text(appViewModel.isDragging ? "HOLDING" : "IDLE")
                             .font(.caption.bold())
                             .padding(6)
-                            .background(appModel.isDragging ? Color.green : Color.gray.opacity(0.2))
-                            .foregroundColor(appModel.isDragging ? .black : .primary)
+                            .background(appViewModel.isDragging ? Color.green : Color.gray.opacity(0.2))
+                            .foregroundColor(appViewModel.isDragging ? .black : .primary)
                             .cornerRadius(8)
                     }
                     
@@ -101,7 +101,7 @@ struct PhysicsControlView: View {
                 
                 Section("Body Properties") {
                     // NEW: Shape Picker
-                    Picker("Shape", selection: Bindable(appModel).selectedShape) {
+                    Picker("Shape", selection: Bindable(appViewModel).selectedShape) {
                         ForEach(ShapeOption.allCases) { shape in
                             Text(shape.rawValue).tag(shape)
                         }
@@ -109,22 +109,22 @@ struct PhysicsControlView: View {
                     .pickerStyle(.segmented)
                     
                     VStack {
-                        HStack { Text("Mass"); Spacer(); Text("\(appModel.mass, specifier: "%.1f") kg") }
-                        Slider(value: Bindable(appModel).mass, in: 0.1...50.0)
+                        HStack { Text("Mass"); Spacer(); Text("\(appViewModel.mass, specifier: "%.1f") kg") }
+                        Slider(value: Bindable(appViewModel).mass, in: 0.1...50.0)
                     }
                     
                     VStack {
-                        HStack { Text("Bounciness"); Spacer(); Text(String(format: "%.2f", appModel.restitution)) }
-                        Slider(value: Bindable(appModel).restitution, in: 0.0...1.0)
+                        HStack { Text("Bounciness"); Spacer(); Text(String(format: "%.2f", appViewModel.restitution)) }
+                        Slider(value: Bindable(appViewModel).restitution, in: 0.0...1.0)
                     }
                     
                     VStack {
                                         HStack {
                                             Text("Static Friction")
                                             Spacer()
-                                            Text(String(format: "%.2f", appModel.staticFriction))
+                                            Text(String(format: "%.2f", appViewModel.staticFriction))
                                         }
-                                        Slider(value: Bindable(appModel).staticFriction, in: 0.0...1.0)
+                                        Slider(value: Bindable(appViewModel).staticFriction, in: 0.0...1.0)
                                     }
                                     
                          
@@ -132,39 +132,39 @@ struct PhysicsControlView: View {
                                         HStack {
                                             Text("Dynamic Friction")
                                             Spacer()
-                                            Text(String(format: "%.2f", appModel.dynamicFriction))
+                                            Text(String(format: "%.2f", appViewModel.dynamicFriction))
                                         }
-                                        Slider(value: Bindable(appModel).dynamicFriction, in: 0.0...1.0)
+                                        Slider(value: Bindable(appViewModel).dynamicFriction, in: 0.0...1.0)
                                     }
                     
                     VStack(alignment: .leading) {
-                        Toggle("Advanced Aerodynamics", isOn: Bindable(appModel).useAdvancedDrag)
+                        Toggle("Advanced Aerodynamics", isOn: Bindable(appViewModel).useAdvancedDrag)
                         
-                        if appModel.useAdvancedDrag {
+                        if appViewModel.useAdvancedDrag {
                             HStack {
                                 Text("Air Density")
                                 Spacer()
-                                Text(String(format: "%.3f kg/m³", appModel.airDensity))
+                                Text(String(format: "%.3f kg/m³", appViewModel.airDensity))
                             }
-                            Slider(value: Bindable(appModel).airDensity, in: 0.0...5.0)
+                            Slider(value: Bindable(appViewModel).airDensity, in: 0.0...5.0)
                             
                             // Info display
                             Grid(alignment: .leading, verticalSpacing: 5) {
                                 GridRow {
                                     Text("Drag Coeff (Cd):")
-                                    Text(String(format: "%.2f", appModel.dragCoefficient))
+                                    Text(String(format: "%.2f", appViewModel.dragCoefficient))
                                 }
                                 GridRow {
                                     Text("Area (A):")
-                                    Text(String(format: "%.3f m²", appModel.crossSectionalArea))
+                                    Text(String(format: "%.3f m²", appViewModel.crossSectionalArea))
                                 }
                             }
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             
                         } else {
-                            HStack { Text("Air Resistance (Linear)"); Spacer(); Text(String(format: "%.2f", appModel.linearDamping)) }
-                            Slider(value: Bindable(appModel).linearDamping, in: 0.0...5.0)
+                            HStack { Text("Air Resistance (Linear)"); Spacer(); Text(String(format: "%.2f", appViewModel.linearDamping)) }
+                            Slider(value: Bindable(appViewModel).linearDamping, in: 0.0...5.0)
                         }
                     }
                 }
@@ -217,5 +217,5 @@ struct DraggableMenuWrapper: View {
         // -2500 is extremely far away and might make it invisible.
             .transform3DEffect(.init(translation: .init(x: 1000, y: -1000, z: -2500)))
     }
-    .environment(AppModel())
+    .environment(AppViewModel())
 }
