@@ -108,13 +108,6 @@ struct PhysicsControlView: View {
                     }
                     .pickerStyle(.segmented)
                     
-                    Picker("Mode", selection: Bindable(appModel).selectedMode) {
-                        ForEach(PhysicsModeOption.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    
                     VStack {
                         HStack { Text("Mass"); Spacer(); Text("\(appModel.mass, specifier: "%.1f") kg") }
                         Slider(value: Bindable(appModel).mass, in: 0.1...50.0)
@@ -144,9 +137,35 @@ struct PhysicsControlView: View {
                                         Slider(value: Bindable(appModel).dynamicFriction, in: 0.0...1.0)
                                     }
                     
-                    VStack {
-                        HStack { Text("Air Resistance"); Spacer(); Text(String(format: "%.2f", appModel.linearDamping)) }
-                        Slider(value: Bindable(appModel).linearDamping, in: 0.0...5.0)
+                    VStack(alignment: .leading) {
+                        Toggle("Advanced Aerodynamics", isOn: Bindable(appModel).useAdvancedDrag)
+                        
+                        if appModel.useAdvancedDrag {
+                            HStack {
+                                Text("Air Density")
+                                Spacer()
+                                Text(String(format: "%.3f kg/m³", appModel.airDensity))
+                            }
+                            Slider(value: Bindable(appModel).airDensity, in: 0.0...5.0)
+                            
+                            // Info display
+                            Grid(alignment: .leading, verticalSpacing: 5) {
+                                GridRow {
+                                    Text("Drag Coeff (Cd):")
+                                    Text(String(format: "%.2f", appModel.dragCoefficient))
+                                }
+                                GridRow {
+                                    Text("Area (A):")
+                                    Text(String(format: "%.3f m²", appModel.crossSectionalArea))
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            
+                        } else {
+                            HStack { Text("Air Resistance (Linear)"); Spacer(); Text(String(format: "%.2f", appModel.linearDamping)) }
+                            Slider(value: Bindable(appModel).linearDamping, in: 0.0...5.0)
+                        }
                     }
                 }
             }

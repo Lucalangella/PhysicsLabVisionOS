@@ -105,6 +105,27 @@ struct ImmersiveView: View {
                 let speed = length(velocity)
                 appModel.currentSpeed = speed
                 
+                // 1b. Apply Advanced Air Resistance (Drag)
+                if appModel.useAdvancedDrag {
+                    // Formula: Fd = 0.5 * rho * v^2 * Cd * A
+                    // Direction: Opposite to velocity
+                    
+                    if speed > 0.001 { // Avoid divide by zero
+                        let rho = appModel.airDensity
+                        let A = appModel.crossSectionalArea
+                        let Cd = appModel.dragCoefficient
+                        
+                        let dragMagnitude = 0.5 * rho * (speed * speed) * Cd * A
+                        
+                        // Direction is -velocity (normalized)
+                        // force = magnitude * direction
+                        //       = magnitude * (-velocity / speed)
+                        let dragForce = -velocity / speed * dragMagnitude
+                        
+                        obj.addForce(dragForce, relativeTo: nil)
+                    }
+                }
+                
                 // 2. Update Gravity
                 if let root = rootEntity,
                    var physSim = root.components[PhysicsSimulationComponent.self] {
@@ -211,7 +232,10 @@ struct ImmersiveView: View {
             traceRoot?.children.removeAll()
             lastMarkerPosition = nil
         }
-        .onChange(of: [appModel.mass, appModel.restitution, appModel.dynamicFriction, appModel.staticFriction, appModel.linearDamping] as [Float]) {
+        .onChange(of: [appModel.mass, appModel.restitution, appModel.dynamicFriction, appModel.staticFriction, appModel.linearDamping, appModel.airDensity] as [Float]) {
+            updatePhysicsProperties()
+        }
+        .onChange(of: appModel.useAdvancedDrag) {
             updatePhysicsProperties()
         }
         .onChange(of: appModel.selectedMode) {
@@ -278,17 +302,12 @@ struct ImmersiveView: View {
         bodyComponent.massProperties.mass = appModel.mass
         bodyComponent.material = newMaterial
         bodyComponent.mode = appModel.selectedMode.rkMode
-        bodyComponent.linearDamping = appModel.linearDamping
-        obj.components.set(bodyComponent)
         
-        switch appModel.selectedMode {
-        case .dynamic: break
-        case .staticMode:
-            obj.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
-        case .kinematic:
-            let spinSpeed: Float = 1.0
-            obj.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: [0, spinSpeed, 0]))
-        }
+        // If Advanced Drag is on, we apply force manually, so disable built-in linear damping
+        // Otherwise use the slider value
+        bodyComponent.linearDamping = appModel.useAdvancedDrag ? 0.0 : appModel.linearDamping
+        
+        obj.components.set(bodyComponent)
     }
     
     func updateRamp() {

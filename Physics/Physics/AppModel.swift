@@ -26,16 +26,12 @@ enum ShapeOption: String, CaseIterable, Identifiable {
 
 enum PhysicsModeOption: String, CaseIterable, Identifiable {
     case dynamic = "Dynamic"
-    case staticMode = "Static"
-    case kinematic = "Kinematic"
     
     var id: String { self.rawValue }
     
     var rkMode: PhysicsBodyMode {
         switch self {
         case .dynamic: return .dynamic
-        case .staticMode: return .static
-        case .kinematic: return .kinematic
         }
     }
 }
@@ -63,6 +59,28 @@ class AppModel {
     var dynamicFriction: Float = 0.5
     var restitution: Float = 0.6
     var linearDamping: Float = 0.1
+    
+    // NEW: Advanced Aerodynamics
+    var useAdvancedDrag: Bool = false
+    var airDensity: Float = 1.225 // kg/m^3 (Standard Sea Level)
+    
+    // Computed helper for Drag Coefficient based on shape
+    var dragCoefficient: Float {
+        switch selectedShape {
+        case .box: return 1.05 // Cube flat face
+        case .sphere: return 0.47
+        case .cylinder: return 0.82 // Approx for long cylinder side-on
+        }
+    }
+    
+    // Computed helper for Area (approx cross section)
+    var crossSectionalArea: Float {
+        switch selectedShape {
+        case .box: return 0.3 * 0.3 // 0.09 m^2
+        case .sphere: return Float.pi * pow(0.15, 2) // ~0.07 m^2
+        case .cylinder: return 0.3 * 0.15 * 2 // Approx projected area (h*d) = 0.09 m^2
+        }
+    }
     
     func triggerReset() { resetSignal.toggle() }
     
