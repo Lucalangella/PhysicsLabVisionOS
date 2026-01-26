@@ -101,10 +101,14 @@ struct ImmersiveView: View {
                 dynamicFriction: appViewModel.dynamicFriction,
                 restitution: appViewModel.restitution
             )
+            
+            // Safety: In Mixed mode, start Kinematic so it doesn't fall before meshes load
+            let initialMode: PhysicsBodyMode = (appViewModel.selectedEnvironment == .mixed) ? .kinematic : appViewModel.selectedMode.rkMode
+            
             var physicsBody = PhysicsBodyComponent(
                 massProperties: .init(mass: appViewModel.mass),
                 material: material,
-                mode: appViewModel.selectedMode.rkMode
+                mode: initialMode
             )
             physicsBody.linearDamping = appViewModel.linearDamping
             object.components.set(physicsBody)
@@ -118,6 +122,15 @@ struct ImmersiveView: View {
             _ = content.subscribe(to: SceneEvents.Update.self) { event in
                 guard let obj = objectEntity,
                       let motion = obj.components[PhysicsMotionComponent.self] else { return }
+                
+                // --- Void Floor Check ---
+                if obj.position(relativeTo: nil).y < -5.0 {
+                     obj.components.set(PhysicsMotionComponent(linearVelocity: .zero, angularVelocity: .zero))
+                     obj.position = [0, 1.5, -2.0]
+                     lastMarkerPosition = nil
+                     // Optionally clear trace if you want
+                     // traceRoot?.children.removeAll()
+                }
                 
                 let velocity = motion.linearVelocity
                 let speed = length(velocity)
