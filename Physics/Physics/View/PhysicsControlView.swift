@@ -207,15 +207,17 @@ struct DashboardToolbar: View {
             
             Divider().frame(height: 20)
             
-            Toggle(isOn: $vm.showWalls) {
-                Label("Walls", systemImage: "square.split.bottomright.fill")
+            if vm.selectedEnvironment == .virtual{
+                Toggle(isOn: $vm.showWalls) {
+                    Label("Walls", systemImage: "square.split.bottomright.fill")
+                }
+                .toggleStyle(.button)
+                
+                Toggle(isOn: $vm.showRamp) {
+                    Label("Ramp", systemImage: "arrow.triangle.up.right")
+                }
+                .toggleStyle(.button)
             }
-            .toggleStyle(.button)
-            
-            Toggle(isOn: $vm.showRamp) {
-                Label("Ramp", systemImage: "arrow.triangle.up.right")
-            }
-            .toggleStyle(.button)
             
             Toggle(isOn: $vm.showPath) {
                 Label("Trace", systemImage: "scribble")
