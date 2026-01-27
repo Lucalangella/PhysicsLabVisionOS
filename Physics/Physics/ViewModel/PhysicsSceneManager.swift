@@ -398,6 +398,13 @@ class PhysicsSceneManager {
         createWall(size: [wallThickness, wallHeight, floorSize], pos: [-(floorSize / 2) - (wallThickness / 2), wallHeight / 2, floorCenterZ])
         // Right
         createWall(size: [wallThickness, wallHeight, floorSize], pos: [(floorSize / 2) + (wallThickness / 2), wallHeight / 2, floorCenterZ])
+        
+        // Ceiling (Only if max height)
+        if wallHeight >= 1.99 {
+            // Cover the entire top including wall thickness
+            let ceilingWidth = floorSize + (wallThickness * 2)
+            createWall(size: [ceilingWidth, wallThickness, ceilingWidth], pos: [0, wallHeight + (wallThickness / 2), floorCenterZ])
+        }
     }
     
     func addPathMarker(at position: SIMD3<Float>) {

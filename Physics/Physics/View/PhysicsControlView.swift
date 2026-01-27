@@ -79,7 +79,7 @@ struct PhysicsControlView: View {
                             .foregroundStyle(.secondary)
                             .textCase(.uppercase)
                         
-                        PhysicsSlider(label: "Height", value: $bVM.wallHeight, range: 0.1...2.0, unit: "m")
+                        PhysicsSlider(label: "Height", value: $bVM.wallHeight, range: 0.1...3.0, unit: "m")
                     }
                     .transition(.move(edge: .top).combined(with: .opacity)) // Smooth animation
                 }
