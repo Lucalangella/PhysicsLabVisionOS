@@ -1,241 +1,252 @@
 import SwiftUI
+import RealityKit
 
+// MARK: - Main Control View
 struct PhysicsControlView: View {
-    @Environment(AppViewModel.self) var appViewModel
+    @Environment(AppViewModel.self) var vm
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Telemetry") {
-                    HStack {
-                        Label("Current Speed", systemImage: "speedometer")
-                        Spacer()
-                        Text("\(appViewModel.currentSpeed, specifier: "%.2f") m/s")
-                            .font(.monospacedDigit(.body)())
-                            .foregroundStyle(.secondary)
+        // Create a bindable reference to the view model for UI controls
+        @Bindable var bVM = vm
+        
+        HStack(alignment: .top, spacing: 30) {
+            
+            // --- Column 1: Object Properties (Internal Physics) ---
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeader(title: "Object Properties", icon: "cube.fill")
+                
+                // Shape Picker
+                Picker("Shape", selection: $bVM.selectedShape) {
+                    ForEach(ShapeOption.allCases) { shape in
+                        Text(shape.rawValue).tag(shape)
                     }
                 }
+                .pickerStyle(.segmented)
                 
+                Divider()
+                    .background(.white.opacity(0.2))
                 
-
-                Section("Environment") {
-                    VStack {
-                        HStack {
-                            Text("Gravity (Y-Axis)")
-                            Spacer()
-                            Text(String(format: "%.1f m/s²", appViewModel.gravity))
-                                .foregroundStyle(.blue)
-                        }
-                        Slider(value: Bindable(appViewModel).gravity, in: -20.0...0.0)
-                    }
-                    
-                    Toggle("Show Walls", isOn: Bindable(appViewModel).showWalls)
-                    
-                    if appViewModel.showWalls {
-                        VStack {
-                            HStack {
-                                Text("Wall Height")
-                                Spacer()
-                                Text(String(format: "%.2f m", appViewModel.wallHeight))
-                                    .foregroundStyle(.blue)
-                            }
-                            Slider(value: Bindable(appViewModel).wallHeight, in: 0.1...2.0)
-                        }
-                    }
-                }
-                
-                // Place this inside the List, perhaps after "Environment"
-                Section("Inclined Plane (Ramp)") {
-                    Toggle("Enable Ramp", isOn: Bindable(appViewModel).showRamp)
-                    
-                    if appViewModel.showRamp {
-                        VStack {
-                            HStack {
-                                Text("Angle")
-                                Spacer()
-                                Text("\(appViewModel.rampAngle, specifier: "%.0f")°")
-                                    .foregroundStyle(.blue)
-                            }
-                            // 0 to 60 degrees is usually enough for friction tests
-                            Slider(value: Bindable(appViewModel).rampAngle, in: 0.0...60.0)
-                        }
-                        
-                        VStack {
-                            HStack {
-                                Text("Length")
-                                Spacer()
-                                Text(String(format: "%.1f m", appViewModel.rampLength))
-                                    .foregroundStyle(.blue)
-                            }
-                            Slider(value: Bindable(appViewModel).rampLength, in: 0.5...5.0)
-                        }
-                        
-                        VStack {
-                            HStack {
-                                Text("Width")
-                                Spacer()
-                                Text(String(format: "%.1f m", appViewModel.rampWidth))
-                                    .foregroundStyle(.blue)
-                            }
-                            Slider(value: Bindable(appViewModel).rampWidth, in: 0.5...5.0)
-                        }
-                        
-                        VStack {
-                            HStack {
-                                Text("Rotation")
-                                Spacer()
-                                Text("\(appViewModel.rampRotation, specifier: "%.0f")°")
-                                    .foregroundStyle(.blue)
-                            }
-                            Slider(value: Bindable(appViewModel).rampRotation, in: 0.0...360.0)
-                        }
-                    }
-                }
-
-                Section("Interaction") {
-                    Button("Respawn Object") { appViewModel.triggerReset() }
-                    
-                    Toggle("Show Motion Path (Plot)", isOn: Bindable(appViewModel).showPath)
-                    
-                    HStack {
-                        Text("Status")
-                        Spacer()
-                        Text(appViewModel.isDragging ? "HOLDING" : "IDLE")
-                            .font(.caption.bold())
-                            .padding(6)
-                            .background(appViewModel.isDragging ? Color.green : Color.gray.opacity(0.2))
-                            .foregroundColor(appViewModel.isDragging ? .black : .primary)
-                            .cornerRadius(8)
-                    }
-                    
-                    Text("Object will drop vertically on release.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Section("Body Properties") {
-                    // NEW: Shape Picker
-                    Picker("Shape", selection: Bindable(appViewModel).selectedShape) {
-                        ForEach(ShapeOption.allCases) { shape in
-                            Text(shape.rawValue).tag(shape)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    
-                    VStack {
-                        HStack { Text("Mass"); Spacer(); Text("\(appViewModel.mass, specifier: "%.1f") kg") }
-                        Slider(value: Bindable(appViewModel).mass, in: 0.1...50.0)
-                    }
-                    
-                    VStack {
-                        HStack { Text("Bounciness"); Spacer(); Text(String(format: "%.2f", appViewModel.restitution)) }
-                        Slider(value: Bindable(appViewModel).restitution, in: 0.0...1.0)
-                    }
-                    
-                    VStack {
-                                        HStack {
-                                            Text("Static Friction")
-                                            Spacer()
-                                            Text(String(format: "%.2f", appViewModel.staticFriction))
-                                        }
-                                        Slider(value: Bindable(appViewModel).staticFriction, in: 0.0...1.0)
-                                    }
-                                    
-                         
-                                    VStack {
-                                        HStack {
-                                            Text("Dynamic Friction")
-                                            Spacer()
-                                            Text(String(format: "%.2f", appViewModel.dynamicFriction))
-                                        }
-                                        Slider(value: Bindable(appViewModel).dynamicFriction, in: 0.0...1.0)
-                                    }
-                    
-                    VStack(alignment: .leading) {
-                        Toggle("Advanced Aerodynamics", isOn: Bindable(appViewModel).useAdvancedDrag)
-                        
-                        if appViewModel.useAdvancedDrag {
-                            HStack {
-                                Text("Air Density")
-                                Spacer()
-                                Text(String(format: "%.3f kg/m³", appViewModel.airDensity))
-                            }
-                            Slider(value: Bindable(appViewModel).airDensity, in: 0.0...5.0)
-                            
-                            // Info display
-                            Grid(alignment: .leading, verticalSpacing: 5) {
-                                GridRow {
-                                    Text("Drag Coeff (Cd):")
-                                    Text(String(format: "%.2f", appViewModel.dragCoefficient))
-                                }
-                                GridRow {
-                                    Text("Area (A):")
-                                    Text(String(format: "%.3f m²", appViewModel.crossSectionalArea))
-                                }
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            
-                        } else {
-                            HStack { Text("Air Resistance (Linear)"); Spacer(); Text(String(format: "%.2f", appViewModel.linearDamping)) }
-                            Slider(value: Bindable(appViewModel).linearDamping, in: 0.0...5.0)
-                        }
-                    }
+                // Physics Sliders (Mass, Bounce, Friction)
+                Group {
+                    PhysicsSlider(label: "Mass", value: $bVM.mass, range: 0.1...50.0, unit: "kg")
+                    PhysicsSlider(label: "Bounciness", value: $bVM.restitution, range: 0.0...1.0, unit: "")
+                    PhysicsSlider(label: "Static Friction", value: $bVM.staticFriction, range: 0.0...1.0, unit: "")
+                    PhysicsSlider(label: "Dynamic Friction", value: $bVM.dynamicFriction, range: 0.0...1.0, unit: "")
                 }
             }
-            .navigationTitle("Physics Lab")
+            .frame(maxWidth: .infinity)
+            
+            // Vertical Divider
+            Rectangle()
+                .fill(.white.opacity(0.2))
+                .frame(width: 1)
+            
+            // --- Column 2: Environment (External Forces) ---
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeader(title: "Environment", icon: "globe.europe.africa.fill")
+                
+                // Telemetry Readout Box
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("VELOCITY")
+                            .font(.caption2).fontWeight(.bold).foregroundStyle(.secondary)
+                        Text("\(vm.currentSpeed, specifier: "%.2f") m/s")
+                            .font(.title2).monospacedDigit()
+                    }
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Text("STATUS")
+                            .font(.caption2).fontWeight(.bold).foregroundStyle(.secondary)
+                        Text(vm.isDragging ? "HOLDING" : "IDLE")
+                            .font(.caption.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(vm.isDragging ? Color.green : Color.gray.opacity(0.3))
+                            .foregroundStyle(vm.isDragging ? .black : .primary)
+                            .cornerRadius(4)
+                    }
+                }
+                .padding()
+                .background(.black.opacity(0.2))
+                .cornerRadius(12)
+                
+                // --- NEW: Wall Settings (Appears only when Walls are ON) ---
+                if vm.showWalls {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Wall Configuration")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                        
+                        PhysicsSlider(label: "Height", value: $bVM.wallHeight, range: 0.1...2.0, unit: "m")
+                    }
+//                    .padding()
+//                    .background(.white.opacity(0.05))
+//                    .cornerRadius(10)
+                    .transition(.move(edge: .top).combined(with: .opacity)) // Smooth animation
+                }
+
+                // Gravity Slider
+                PhysicsSlider(label: "Gravity Y", value: $bVM.gravity, range: -20.0...0.0, unit: "m/s²")
+                
+                // Aerodynamics Section
+                VStack(alignment: .leading, spacing: 10) {
+//                    Toggle("Advanced Aerodynamics", isOn: $bVM.useAdvancedDrag)
+//                        .toggleStyle(.switch)
+//                    
+//                    if vm.useAdvancedDrag {
+                        PhysicsSlider(label: "Air Resistance", value: $bVM.airDensity, range: 0.0...5.0, unit: "kg/m³")
+                        
+//                        // Read-only info for advanced drag
+//                        HStack {
+//                            Text("Cd: \(vm.dragCoefficient, specifier: "%.2f")")
+//                            Spacer()
+//                            Text("Area: \(vm.crossSectionalArea, specifier: "%.3f") m²")
+//                        }
+//                        .font(.caption)
+//                        .foregroundStyle(.secondary)
+                        
+//                    }
+//                    else {
+//                        PhysicsSlider(label: "Linear damping", value: $bVM.linearDamping, range: 0.0...5.0, unit: "")
+//                    }
+                }
+//                .padding()
+//                .background(.white.opacity(0.05))
+//                .cornerRadius(10)
+            }
+            .frame(maxWidth: .infinity)
+            .animation(.spring(), value: vm.showWalls) // Animate the layout change
+            
+            
+            if vm.showRamp {
+                // Vertical Divider
+                Rectangle()
+                    .fill(.white.opacity(0.2))
+                    .frame(width: 1)
+                RampSettingsPanel(vm: vm)
+                    /*.offset(x: 340)*/ // Position it to the right of the main board
+            }
+            
+        }
+        .padding(40)
+//        .glassBackgroundEffect()
+        
+        // --- Bottom Toolbar Ornament ---
+        .ornament(attachmentAnchor: .scene(.bottom)) {
+            DashboardToolbar(vm: vm)
+        }
+        
+//        // --- Conditional Ramp Panel Overlay ---
+//        .overlay(alignment: .trailing) {
+//            if vm.showRamp {
+//                RampSettingsPanel(vm: vm)
+//                    .offset(x: 340) // Position it to the right of the main board
+//            }
+//        }
+    }
+}
+
+// MARK: - Helper Components
+
+/// A custom slider that adapts RealityKit's `Float` to SwiftUI's `Double` requirements.
+struct PhysicsSlider: View {
+    let label: String
+    @Binding var value: Float
+    var range: ClosedRange<Float>
+    var unit: String
+    
+    var body: some View {
+        VStack(spacing: 5) {
+            HStack {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(value, specifier: "%.2f") \(unit)")
+                    .font(.subheadline.monospacedDigit())
+                    .fontWeight(.medium)
+            }
+            
+            Slider(
+                value: Binding(
+                    get: { Double(value) },
+                    set: { value = Float($0) }
+                ),
+                in: Double(range.lowerBound)...Double(range.upperBound)
+            )
+            .tint(.blue)
         }
     }
 }
 
-struct DraggableMenuWrapper: View {
-    // Track the position of the menu
-    @State private var offset = CGSize.zero
-    @State private var lastOffset = CGSize.zero
-
+struct SectionHeader: View {
+    let title: String
+    let icon: String
+    
     var body: some View {
-        PhysicsControlView()
-            .glassBackgroundEffect()
-            // Apply the drag offset here
-            .offset(x: offset.width, y: offset.height)
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        // Update position while dragging
-                        offset = CGSize(
-                            width: lastOffset.width + value.translation.width,
-                            height: lastOffset.height + value.translation.height
-                        )
-                    }
-                    .onEnded { _ in
-                        // Save the new position when let go
-                        lastOffset = offset
-                    }
-            )
-            // Push it back in Z-space slightly so it doesn't clip your nose
-            .transform3DEffect(.init(translation: .init(x: 0, y: 0, z: -400)))
+        HStack {
+            Image(systemName: icon)
+            Text(title)
+        }
+        .font(.title3)
+        .fontWeight(.semibold)
     }
 }
 
-#Preview("Full App Experience", immersionStyle: .mixed) {
-    ZStack { // 1. Use ZStack to layer them on top of each other
-        ImmersiveView()
-        
-        DraggableMenuWrapper()
-        // 2. Set the Size FIRST
-            .frame(width: 500, height: 1500)
-        
-        
-        // 4. Move it in 3D Space
-        // Note: Z = -500 puts it roughly arm's length away.
-        // -2500 is extremely far away and might make it invisible.
-            .transform3DEffect(.init(translation: .init(x: 1000, y: -1000, z: -2500)))
+struct DashboardToolbar: View {
+    @Bindable var vm: AppViewModel
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            Button(action: { vm.triggerReset() }) {
+                Label("Respawn", systemImage: "arrow.counterclockwise")
+                    .padding(.vertical, 8)
+            }
+            
+            Divider().frame(height: 20)
+            
+            Toggle(isOn: $vm.showWalls) {
+                Label("Walls", systemImage: "square.split.bottomright.fill")
+            }
+            .toggleStyle(.button)
+            
+            Toggle(isOn: $vm.showRamp) {
+                Label("Ramp", systemImage: "arrow.triangle.up.right")
+            }
+            .toggleStyle(.button)
+            
+            Toggle(isOn: $vm.showPath) {
+                Label("Trace", systemImage: "scribble")
+            }
+            .toggleStyle(.button)
+        }
+        .padding()
+        .glassBackgroundEffect()
     }
-    .environment(AppViewModel())
 }
 
+struct RampSettingsPanel: View {
+    @Bindable var vm: AppViewModel
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            SectionHeader(title: "Ramp Config", icon: "scalemass")
+            
+            PhysicsSlider(label: "Angle", value: $vm.rampAngle, range: 0.0...60.0, unit: "°")
+            PhysicsSlider(label: "Length", value: $vm.rampLength, range: 0.5...5.0, unit: "m")
+            PhysicsSlider(label: "Width", value: $vm.rampWidth, range: 0.5...5.0, unit: "m")
+            PhysicsSlider(label: "Rotation", value: $vm.rampRotation, range: 0.0...360.0, unit: "°")
+        }
+//        .padding(20)
+//        .frame(width: 300)
+//        .glassBackgroundEffect()
+    }
+}
+
+// MARK: - Preview
 #Preview(windowStyle: .automatic) {
     PhysicsControlView()
         .environment(AppViewModel())
-//        .frame(width: 800, height: 500)
 }

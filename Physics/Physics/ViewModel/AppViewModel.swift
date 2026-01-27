@@ -67,5 +67,5 @@ class AppViewModel {
     var rampAngle: Float = 10.0 // Degrees
     var rampLength: Float = 4.0 // Meters
     var rampWidth: Float = 0.5 // Meters
-    var rampRotation: Float = 0.0 // Degrees (Yaw)
+    var rampRotation: Float = 180.0 // Degrees (Yaw)
 }
