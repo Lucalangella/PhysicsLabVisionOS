@@ -1,4 +1,4 @@
-# PhysicsLabVisionOS
+# NEWTON LAB
 
 PhysicsLabVisionOS is a **VisionOS** application built with **SwiftUI** and **RealityKit**. It serves as an interactive physics laboratory where developers can experiment with various physical properties, simulate real-world behaviors in an immersive environment, and determine the optimal values for their own applications.
 
