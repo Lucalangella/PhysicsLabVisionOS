@@ -4,6 +4,8 @@ PhysicsLabVisionOS is a **VisionOS** application built with **SwiftUI** and **Re
 
 The primary goal of this tool is to help you "feel" the physics (mass, friction, restitution, damping) and visualize the results (path tracing, velocity), so you can take those precise values and use them in your own RealityKit projects.
 
+[![Read on Medium](https://img.shields.io/badge/Medium-Story-black?logo=medium)](https://medium.com/@langellaluca00/stop-guessing-a-real-time-physics-lab-for-realitykit-developers-bf5e4d1b59c5)
+
 ## 🚀 Features
 
 *   **Immersive Physics Sandbox:** Run simulations in a fully immersive 3D space.
